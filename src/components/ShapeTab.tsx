@@ -26,6 +26,8 @@ export default function ShapeTab() {
     right: 'Derecha',
   };
 
+  const linkedValue = state.corners.tl;
+
   return (
     <div className="tp on" id="tp-shape">
       <div>
@@ -39,6 +41,22 @@ export default function ShapeTab() {
             {state.cornersLinked ? 'ON' : 'OFF'}
           </div>
         </div>
+
+        {state.cornersLinked && (
+          <div className="row" style={{ marginTop: '.5rem' }}>
+            <div className="lbl">
+              Radio <b>{linkedValue}</b>px
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={512}
+              value={linkedValue}
+              onChange={(e) => dispatch({ type: 'SET_ALL_CORNERS', value: parseInt(e.target.value) })}
+            />
+          </div>
+        )}
+
         <div style={{ marginTop: '.6rem' }}>
           <div className="corner-widget">
             <div className="cr-inp">
