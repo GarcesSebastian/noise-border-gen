@@ -1,6 +1,3 @@
-// ── Noise Generation Engine ──
-// Pure TypeScript logic for value noise generation, SDF calculations, and rendering
-
 export interface Corners {
   tl: number;
   tr: number;
@@ -38,9 +35,6 @@ function hexToRgb(hex: string): [number, number, number] {
   ];
 }
 
-/**
- * Value noise generation using hash-based interpolation
- */
 function valueNoise(w: number, h: number, blockSize: number): Float32Array {
   const out = new Float32Array(w * h);
   const bs = Math.max(1, blockSize);
@@ -71,10 +65,6 @@ function valueNoise(w: number, h: number, blockSize: number): Float32Array {
   return out;
 }
 
-/**
- * SDF for a rect where each corner can have its own radius.
- * Uses per-corner radius and per-side radius flag.
- */
 function sdfPerCorner(
   px: number,
   py: number,
@@ -108,9 +98,6 @@ function sdfPerCorner(
   );
 }
 
-/**
- * Core render function — produces an offscreen canvas with the noise border applied.
- */
 export function render(params: RenderParams): HTMLCanvasElement {
   const { width: tw, height: th, border, grainSize, amount, fade, bgColor, bgMode, corners, sidesNoise, sidesRadius, uploadedImage } = params;
 
@@ -119,7 +106,6 @@ export function render(params: RenderParams): HTMLCanvasElement {
   off.height = th;
   const octx = off.getContext('2d')!;
 
-  // Draw base
   if (bgMode === 'image' && uploadedImage) {
     octx.drawImage(uploadedImage, 0, 0, tw, th);
   } else {
@@ -158,7 +144,6 @@ export function render(params: RenderParams): HTMLCanvasElement {
         continue;
       }
 
-      // Which active noise sides are close?
       const px2 = x + 0.5;
       const py2 = y + 0.5;
       let minD = Infinity;
@@ -197,9 +182,6 @@ export function render(params: RenderParams): HTMLCanvasElement {
   return off;
 }
 
-/**
- * Export the canvas as a PNG blob
- */
 export function exportPNG(params: RenderParams): Promise<Blob> {
   return new Promise((resolve, reject) => {
     const off = render(params);

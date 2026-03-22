@@ -1,6 +1,3 @@
-// ── Config Storage ──
-// Handles localStorage persistence for saved configurations
-
 import type { AppState } from '@/contexts/AppContext';
 
 export interface SavedConfig {
@@ -35,7 +32,6 @@ export function loadConfigs(): SavedConfig[] {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     const configs: SavedConfig[] = raw ? JSON.parse(raw) : [];
-    // Ensure default config exists
     if (!configs.find((c) => c.name === DEFAULT_CONFIG.name)) {
       configs.push(DEFAULT_CONFIG);
       localStorage.setItem(STORAGE_KEY, JSON.stringify(configs));
