@@ -27,14 +27,6 @@ export interface RenderParams {
   uploadedImage: HTMLImageElement | null;
 }
 
-function hexToRgb(hex: string): [number, number, number] {
-  return [
-    parseInt(hex.slice(1, 3), 16),
-    parseInt(hex.slice(3, 5), 16),
-    parseInt(hex.slice(5, 7), 16),
-  ];
-}
-
 function valueNoise(w: number, h: number, blockSize: number): Float32Array {
   const out = new Float32Array(w * h);
   const bs = Math.max(1, blockSize);
@@ -66,36 +58,21 @@ function valueNoise(w: number, h: number, blockSize: number): Float32Array {
 }
 
 function sdfPerCorner(
-  px: number,
-  py: number,
-  cx: number,
-  cy: number,
-  hw: number,
-  hh: number,
-  corners: Corners,
-  sidesR: SidesToggles
+  px: number, py: number, cx: number, cy: number,
+  hw: number, hh: number, corners: Corners, sidesR: SidesToggles
 ): number {
   const rx = px - cx;
   const ry = py - cy;
   let cr: number;
 
-  if (rx <= 0 && ry <= 0) {
-    cr = sidesR.top && sidesR.left ? corners.tl : 0;
-  } else if (rx > 0 && ry <= 0) {
-    cr = sidesR.top && sidesR.right ? corners.tr : 0;
-  } else if (rx <= 0 && ry > 0) {
-    cr = sidesR.bottom && sidesR.left ? corners.bl : 0;
-  } else {
-    cr = sidesR.bottom && sidesR.right ? corners.br : 0;
-  }
+  if (rx <= 0 && ry <= 0) cr = sidesR.top && sidesR.left ? corners.tl : 0;
+  else if (rx > 0 && ry <= 0) cr = sidesR.top && sidesR.right ? corners.tr : 0;
+  else if (rx <= 0 && ry > 0) cr = sidesR.bottom && sidesR.left ? corners.bl : 0;
+  else cr = sidesR.bottom && sidesR.right ? corners.br : 0;
 
   const qx = Math.abs(rx) - (hw - cr);
   const qy = Math.abs(ry) - (hh - cr);
-  return (
-    cr -
-    (Math.sqrt(Math.max(qx, 0) ** 2 + Math.max(qy, 0) ** 2) +
-      Math.min(Math.max(qx, qy), 0))
-  );
+  return cr - (Math.sqrt(Math.max(qx, 0) ** 2 + Math.max(qy, 0) ** 2) + Math.min(Math.max(qx, qy), 0));
 }
 
 export function render(params: RenderParams): HTMLCanvasElement {
@@ -127,22 +104,13 @@ export function render(params: RenderParams): HTMLCanvasElement {
       const i = (y * tw + x) * 4;
       const dist = sdfPerCorner(x + 0.5, y + 0.5, cx, cy, hw, hh, corners, sidesRadius);
 
-      if (dist <= 0) {
-        d[i + 3] = 0;
-        continue;
-      }
+      if (dist <= 0) { d[i + 3] = 0; continue; }
 
       const br = bgData.data[i];
       const bg2 = bgData.data[i + 1];
       const bb = bgData.data[i + 2];
 
-      if (dist > border) {
-        d[i] = br;
-        d[i + 1] = bg2;
-        d[i + 2] = bb;
-        d[i + 3] = 255;
-        continue;
-      }
+      if (dist > border) { d[i] = br; d[i + 1] = bg2; d[i + 2] = bb; d[i + 3] = 255; continue; }
 
       const px2 = x + 0.5;
       const py2 = y + 0.5;
@@ -152,34 +120,49 @@ export function render(params: RenderParams): HTMLCanvasElement {
       if (sidesNoise.left && px2 <= border) minD = Math.min(minD, px2);
       if (sidesNoise.right && tw - px2 <= border) minD = Math.min(minD, tw - px2);
 
-      if (minD === Infinity) {
-        d[i] = br;
-        d[i + 1] = bg2;
-        d[i + 2] = bb;
-        d[i + 3] = 255;
-        continue;
-      }
+      if (minD === Infinity) { d[i] = br; d[i + 1] = bg2; d[i + 2] = bb; d[i + 3] = 255; continue; }
 
       const t = 1.0 - minD / border;
       const strength = Math.pow(t, fade);
       const cutoff = amount * strength;
       const n = noise[y * tw + x];
 
-      if (n < cutoff) {
-        d[i] = 0;
-        d[i + 1] = 0;
-        d[i + 2] = 0;
-        d[i + 3] = 0;
-      } else {
-        d[i] = br;
-        d[i + 1] = bg2;
-        d[i + 2] = bb;
-        d[i + 3] = 255;
-      }
+      if (n < cutoff) { d[i] = 0; d[i + 1] = 0; d[i + 2] = 0; d[i + 3] = 0; }
+      else { d[i] = br; d[i + 1] = bg2; d[i + 2] = bb; d[i + 3] = 255; }
     }
   }
   octx.putImageData(img, 0, 0);
   return off;
+}
+
+export function renderPreview(params: RenderParams, maxDim: number): HTMLCanvasElement {
+  const scaleFactor = Math.min(1, maxDim / Math.max(params.width, params.height));
+  if (scaleFactor >= 1) return render(params);
+
+  const pw = Math.max(1, Math.round(params.width * scaleFactor));
+  const ph = Math.max(1, Math.round(params.height * scaleFactor));
+
+  const preview = render({
+    ...params,
+    width: pw,
+    height: ph,
+    border: Math.round(params.border * scaleFactor),
+    grainSize: params.grainSize * scaleFactor,
+    corners: {
+      tl: Math.round(params.corners.tl * scaleFactor),
+      tr: Math.round(params.corners.tr * scaleFactor),
+      bl: Math.round(params.corners.bl * scaleFactor),
+      br: Math.round(params.corners.br * scaleFactor),
+    },
+  });
+
+  const full = document.createElement('canvas');
+  full.width = params.width;
+  full.height = params.height;
+  const ctx = full.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(preview, 0, 0, params.width, params.height);
+  return full;
 }
 
 export function exportPNG(params: RenderParams): Promise<Blob> {
